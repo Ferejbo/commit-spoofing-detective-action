@@ -1,0 +1,13 @@
+name: "Detect Commit Spoofing"
+description: "Checks for commit author and push-activity actor mismatches to detect potential commit spoofing."
+author: "Felix Bottolfsen"
+inputs:
+  GITHUB_TOKEN:
+    description: "GitHub access token. Necessary for accesing the push-activity actor data from GitHub API."
+    required: true
+outputs:
+  mismatch:
+    description: "Indicates if a mismatch was detected between the commit author and the push actor."
+runs:
+  using: "node20"
+  main: "index.js"
