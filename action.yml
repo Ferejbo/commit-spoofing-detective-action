@@ -10,4 +10,4 @@ outputs:
     description: "Indicates if a mismatch was detected between the commit author and the push actor."
 runs:
   using: "node20"
-  main: "index.js"
+  main: "dist/index.js"
