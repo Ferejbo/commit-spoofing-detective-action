@@ -36,13 +36,15 @@ async function checkSpoofing() {
 
     const pusher = context.actor;
 
+    const commitTextOutput = `commit "${commitMessage}" (${sha})`;
+    
     if (commitAuthor !== pusher) {
-      const detailedMismatchMessage = `Mismatch detected in commit "${commitMessage}" (${sha}). Author is "${commitAuthor}" while push actor is "${pusher}"😬`;
+      const detailedMismatchMessage = `Mismatch detected in ${commitTextOutput}. Author is "${commitAuthor}" while push actor is "${pusher}"😬`;
       core.setFailed(detailedMismatchMessage);
       core.setOutput("mismatch", "true");
     } else {
       console.log(
-        `No mismatch detected: Commit by '${commitAuthor}' was also pushed by '${pusher}'.`
+        `No mismatch detected: ${commitTextOutput}, authored by '${commitAuthor}' was also pushed by '${pusher}'.`
       );
       core.setOutput("mismatch", "false");
     }
