@@ -31087,8 +31087,13 @@ async function checkSpoofing() {
   const token = core.getInput("GITHUB_TOKEN");
   const octokit = new Octokit({ auth: token });
 
-  const { owner, repo } = github.context.repo;
-  const sha = github.sha;
+  const context = github.context;
+
+  const { owner, repo } = context.repo;
+  const sha = context.sha;
+
+  console.log(github);
+  console.log(token);
 
   try {
     const response = await octokit.request(
@@ -31114,7 +31119,7 @@ async function checkSpoofing() {
     const commitAuthor = data.author.login;
     const commitMessage = data.commit.message;
 
-    const pusher = github.triggering_actor;
+    const pusher = context.actor;
 
     if (commitAuthor !== pusher) {
       const detailedMismatchMessage = `Mismatch detected in commit "${commitMessage}" (${sha}). Author is "${commitAuthor}" while push actor is "${pusher}"😬`;
