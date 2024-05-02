@@ -10,6 +10,9 @@ async function checkSpoofing() {
   const { owner, repo } = github.context.repo;
   const sha = github.sha;
 
+  console.log(github);
+  console.log(token);
+
   try {
     const response = await octokit.request(
       "GET /repos/{owner}/{repo}/commits/{ref}",
