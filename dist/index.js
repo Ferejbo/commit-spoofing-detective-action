@@ -31092,9 +31092,6 @@ async function checkSpoofing() {
   const { owner, repo } = context.repo;
   const sha = context.sha;
 
-  console.log(github);
-  console.log(token);
-
   try {
     const response = await octokit.request(
       "GET /repos/{owner}/{repo}/commits/{ref}",
@@ -31111,8 +31108,6 @@ async function checkSpoofing() {
     if (response.status != 200) {
       core.setFailed(`Action failed with network error: ${response.status}`);
     }
-
-    console.log(response, owner, repo, sha);
 
     const data = response.data;
 
