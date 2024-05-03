@@ -31105,8 +31105,10 @@ async function checkSpoofing() {
         }
       );
 
-      if (response.status != 200) {
-        core.setFailed(`Action failed with network error: ${response.status}`);
+      if (responseCommits.status != 200) {
+        core.setFailed(
+          `Action failed with network error: ${responseCommits.status}`
+        );
       }
 
       console.log("context", context);
@@ -31115,7 +31117,7 @@ async function checkSpoofing() {
 
       console.log("pr", context.payload.pull_request);
 
-      const commitsInPr = response.data;
+      const commitsInPr = responseCommits.data;
       const relevantBranch = context.payload.pull_request.head.ref;
 
       const responseActivities = await octokit.request(
