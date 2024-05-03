@@ -14,7 +14,7 @@ async function checkSpoofing() {
 
   if (context.eventName == "pull_request") {
     const pr = context.payload.pull_request;
-
+    console.log("PRRRRRRR");
     try {
       const responseCommits = await octokit.request(
         "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits?per_page=100",
