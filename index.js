@@ -14,7 +14,7 @@ async function checkSpoofing() {
 
   if (context.eventName == "pull_request") {
     const pr = context.payload.pull_request;
-    console.log("PRRRRRRR");
+
     try {
       const responseCommits = await octokit.request(
         "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits?per_page=100",
@@ -31,15 +31,7 @@ async function checkSpoofing() {
         );
       }
 
-      console.log("context", context);
-
-      console.log("payload", context.payload);
-
-      console.log("pr", context.payload.pull_request.head.ref);
-
-      const sourceBranchName = context.payload.pull_request.head.ref;
       const commitsInPr = responseCommits.data;
-      const relevantBranch = context.payload.pull_request.head.ref;
 
       const responseActivities = await octokit.request(
         "GET /repos/{owner}/{repo}/activity?ref={ref}&activity_type=push&per_page=100",
@@ -90,15 +82,12 @@ async function checkSpoofing() {
         }
       }
 
-      console.log("Commits", commitsInPr);
-      console.log("Activities", activitiesInPr);
-
       console.log("Checked the following commits in the pull request:");
       console.log(checkedCommitsMessage);
 
       if (susCommitsMessage) {
         core.setFailed(
-          "One or more commits are might be spoofed \n" + susCommitsMessage
+          "One or more commits are might be spoofed: \n" + susCommitsMessage
         );
       } else {
         console.log(
