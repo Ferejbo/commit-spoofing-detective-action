@@ -44,8 +44,8 @@ async function checkSpoofing() {
       const responseActivities = await octokit.request(
         "GET /repos/{owner}/{repo}/activity?ref={ref}&activity_type=push&per_page=100",
         {
-          owner: "OWNER",
-          repo: "REPO",
+          owner: owner,
+          repo: repo,
           ref: context.payload.pull_request.head.ref,
           headers: {
             "X-GitHub-Api-Version": "2022-11-28",
