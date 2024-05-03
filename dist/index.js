@@ -31115,21 +31115,77 @@ async function checkSpoofing() {
 
       console.log("payload", context.payload);
 
-      console.log("pr", context.payload.pull_request);
+      console.log("pr", context.payload.pull_request.head.ref);
 
+      const sourceBranchName = context.payload.pull_request.head.ref;
       const commitsInPr = responseCommits.data;
       const relevantBranch = context.payload.pull_request.head.ref;
 
       const responseActivities = await octokit.request(
-        "GET /repos/{owner}/{repo}/activity?activity_type=push&",
+        "GET /repos/{owner}/{repo}/activity?ref={ref}&activity_type=push&per_page=100",
         {
           owner: "OWNER",
           repo: "REPO",
+          ref: context.payload.pull_request.head.ref,
           headers: {
             "X-GitHub-Api-Version": "2022-11-28",
           },
         }
       );
+
+      if (responseActivities.status != 200) {
+        core.setFailed(
+          `Action failed with network error: ${responseActivities.status}`
+        );
+      }
+
+      const activitiesInPr = responseActivities.data;
+      let susCommitsMessage = "";
+      let checkedCommitsMessage = "";
+
+      for (commit of commitsInPr) {
+        const commitSha = commit.sha;
+        const commitAuthorLogin = commit.author.login;
+        const commitMessage = commit.commit.message;
+
+        for (activity of responseActivities) {
+          const activityCommitSha = activity.after;
+          const activityActor = activity.actor.login;
+
+          if (commitSha == activityCommitSha) {
+            checkedCommitsMessage +=
+              returnCheckedCommitStringFormatted(commitMessage, commitSha) +
+              "\n";
+
+            if (commitAuthorLogin != activityActor) {
+              susCommitsMessage +=
+                returnSuspiciousCommitStringFormatted(
+                  commitMessage,
+                  commitSha,
+                  commitAuthorLogin,
+                  activityActor
+                ) + "\n";
+            }
+          }
+        }
+      }
+
+      console.log("Commits", commitsInPr);
+      console.log("Activities", activitiesInPr);
+
+      console.log("Checked the following commits in the pull request:");
+      console.log(checkedCommitsMessage);
+
+      if (susCommitsMessage) {
+        core.setFailed(
+          "One or more commits are might be spoofed \n" + susCommitsMessage
+        );
+      } else {
+        console.log(
+          "No potentially spoofed commits spotted in the pull request"
+        );
+        core.setOutput("mismatch", "false");
+      }
     } catch (error) {
       core.setFailed(`Action failed with error: ${error}`);
     }
@@ -31158,10 +31214,18 @@ async function checkSpoofing() {
 
       const pusher = context.actor;
 
-      const commitTextOutput = `commit "${commitMessage}" (${sha})`;
+      const commitTextOutput = returnCheckedCommitStringFormatted(
+        commitMessage,
+        sha
+      );
 
       if (commitAuthor !== pusher) {
-        const detailedMismatchMessage = `Mismatch detected in ${commitTextOutput}. Author is "${commitAuthor}" while push actor is "${pusher}"😬`;
+        const detailedMismatchMessage = returnSuspiciousCommitStringFormatted(
+          commitMessage,
+          sha,
+          commitAuthor,
+          pusher
+        );
         core.setFailed(detailedMismatchMessage);
         core.setOutput("mismatch", "true");
       } else {
@@ -31174,6 +31238,17 @@ async function checkSpoofing() {
       core.setFailed(`Action failed with error: ${error}`);
     }
   }
+}
+
+function returnCheckedCommitStringFormatted(message, sha) {
+  return `commit "${message}" (${sha})`;
+}
+
+function returnSuspiciousCommitStringFormatted(message, sha, author, actor) {
+  return `Suspicious ${returnCheckedCommitStringFormatted(
+    message,
+    sha
+  )}. Author is ${author}, while push actor is ${actor}`;
 }
 
 checkSpoofing();
