@@ -31094,7 +31094,7 @@ async function checkSpoofing() {
 
   if (context.eventName == "pull_request") {
     const pr = context.payload.pull_request;
-    console.log("PRRRRRRR");
+
     try {
       const responseCommits = await octokit.request(
         "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits?per_page=100",
@@ -31105,21 +31105,9 @@ async function checkSpoofing() {
         }
       );
 
-      if (responseCommits.status != 200) {
-        core.setFailed(
-          `Action failed with network error: ${responseCommits.status}`
-        );
-      }
+      checkNetworkError(responseCommits.status, "commits in branch");
 
-      console.log("context", context);
-
-      console.log("payload", context.payload);
-
-      console.log("pr", context.payload.pull_request.head.ref);
-
-      const sourceBranchName = context.payload.pull_request.head.ref;
       const commitsInPr = responseCommits.data;
-      const relevantBranch = context.payload.pull_request.head.ref;
 
       const responseActivities = await octokit.request(
         "GET /repos/{owner}/{repo}/activity?ref={ref}&activity_type=push&per_page=100",
@@ -31133,15 +31121,12 @@ async function checkSpoofing() {
         }
       );
 
-      if (responseActivities.status != 200) {
-        core.setFailed(
-          `Action failed with network error: ${responseActivities.status}`
-        );
-      }
+      checkNetworkError(responseActivities.status, "activities in branch");
 
       const activitiesInPr = responseActivities.data;
       let susCommitsMessage = "";
       let checkedCommitsMessage = "";
+      let checkedCommitsCount = 0;
 
       for (commit of commitsInPr) {
         const commitSha = commit.sha;
@@ -31156,6 +31141,7 @@ async function checkSpoofing() {
             checkedCommitsMessage +=
               returnCheckedCommitStringFormatted(commitMessage, commitSha) +
               "\n";
+            checkedCommitsCount++;
 
             if (commitAuthorLogin != activityActor) {
               susCommitsMessage +=
@@ -31170,15 +31156,20 @@ async function checkSpoofing() {
         }
       }
 
-      console.log("Commits", commitsInPr);
-      console.log("Activities", activitiesInPr);
-
       console.log("Checked the following commits in the pull request:");
       console.log(checkedCommitsMessage);
 
+      if (checkedCommitsCount != commitsInPr.length) {
+        core.setFailed(
+          "All commits in branch were not checked for spoofing. This could be a problem with the GitHub API 'activity' endpoint"
+        );
+      } else {
+        console.log("All commits were succesfully checked for spoofing");
+      }
+
       if (susCommitsMessage) {
         core.setFailed(
-          "One or more commits are might be spoofed \n" + susCommitsMessage
+          "One or more commits are might be spoofed: \n" + susCommitsMessage
         );
       } else {
         console.log(
@@ -31203,9 +31194,7 @@ async function checkSpoofing() {
         }
       );
 
-      if (response.status != 200) {
-        core.setFailed(`Action failed with network error: ${response.status}`);
-      }
+      checkNetworkError(response.status, "recently pushed commit");
 
       const data = response.data;
 
@@ -31249,6 +31238,14 @@ function returnSuspiciousCommitStringFormatted(message, sha, author, actor) {
     message,
     sha
   )}. Author is ${author}, while push actor is ${actor}`;
+}
+
+function checkNetworkError(statusCode, whatAreFetched) {
+  if (statusCode != 200) {
+    core.setFailed(
+      `Action failed fetching ${whatAreFetched} from GitHub API. Network error: ${statusCode}`
+    );
+  }
 }
 
 checkSpoofing();
