@@ -102,27 +102,15 @@ async function checkSpoofing() {
     }
   } else if (context.eventName == "push") {
     try {
-      const response = await octokit.request(
-        "GET /repos/{owner}/{repo}/commits/{ref}",
-        {
-          owner: owner,
-          repo: repo,
-          ref: sha,
-          headers: {
-            "X-GitHub-Api-Version": "2022-11-28",
-          },
-        }
-      );
-
-      checkNetworkError(response.status, "recently pushed commit");
-
       console.log("context", context);
       console.log("payload", context.payload);
 
-      const data = response.data;
+      const pushedCommit = context.payload.head_commit;
 
-      const commitAuthor = data.author.login;
-      const commitMessage = data.commit.message;
+      const commitAuthor = pushedCommit.author.username;
+      const commitMessage = pushedCommit.message;
+
+      console.log(commitAuthor, commitMessage);
 
       const pusher = context.actor;
 
