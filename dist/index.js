@@ -31182,15 +31182,10 @@ async function checkSpoofing() {
     }
   } else if (context.eventName == "push") {
     try {
-      console.log("context", context);
-      console.log("payload", context.payload);
-
       const pushedCommit = context.payload.head_commit;
 
       const commitAuthor = pushedCommit.author.username;
       const commitMessage = pushedCommit.message;
-
-      console.log(commitAuthor, commitMessage);
 
       const pusher = context.actor;
 
@@ -31210,7 +31205,7 @@ async function checkSpoofing() {
         core.setOutput("mismatch", "true");
       } else {
         console.log(
-          `No mismatch detected: ${commitTextOutput}, authored by '${commitAuthor}' was also pushed by '${pusher}'.`
+          `No mismatch detected in ${commitTextOutput}. Commit authored by '${commitAuthor}' was also pushed by '${pusher}'.`
         );
         core.setOutput("mismatch", "false");
       }
