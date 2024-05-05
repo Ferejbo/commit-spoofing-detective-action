@@ -31162,7 +31162,11 @@ async function checkSpoofing() {
 
       if (checkedCommitsCount != commitsInPr.length) {
         core.setFailed(
-          "All commits in branch were not checked for spoofing. This could be a latency problem with the GitHub API 'activity' endpoint"
+          `All commits in branch were not checked for spoofing. This could be a latency problem with the GitHub API 'activity' endpoint. ${
+            susCommitsMessage
+              ? "Found following suspoicios commits: " + susCommitsMessage
+              : null
+          }`
         );
       } else {
         console.log("All commits were succesfully checked for spoofing");
@@ -31170,7 +31174,7 @@ async function checkSpoofing() {
 
       if (susCommitsMessage) {
         core.setFailed(
-          "One or more commits are might be spoofed: \n" + susCommitsMessage
+          "One or more commits might be spoofed: \n" + susCommitsMessage
         );
       } else {
         console.log(
