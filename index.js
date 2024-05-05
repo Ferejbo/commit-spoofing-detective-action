@@ -116,6 +116,9 @@ async function checkSpoofing() {
 
       checkNetworkError(response.status, "recently pushed commit");
 
+      console.log("context", context);
+      console.log("payload", context.payload);
+
       const data = response.data;
 
       const commitAuthor = data.author.login;
