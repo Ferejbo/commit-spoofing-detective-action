@@ -64,6 +64,7 @@ async function checkSpoofing() {
             checkedCommitsCount++;
 
             if (commitAuthorLogin != activityActor) {
+              core.setOutput("mismatch", "true");
               susCommitsMessage +=
                 returnSuspiciousCommitStringFormatted(
                   commitMessage,
