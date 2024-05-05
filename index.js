@@ -82,7 +82,7 @@ async function checkSpoofing() {
 
       if (checkedCommitsCount != commitsInPr.length) {
         core.setFailed(
-          "All commits in branch were not checked for spoofing. This could be a problem with the GitHub API 'activity' endpoint"
+          "All commits in branch were not checked for spoofing. This could be a latency problem with the GitHub API 'activity' endpoint"
         );
       } else {
         console.log("All commits were succesfully checked for spoofing");
