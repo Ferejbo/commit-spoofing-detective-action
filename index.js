@@ -84,8 +84,9 @@ async function checkSpoofing() {
         core.setFailed(
           `All commits in branch were not checked for spoofing. This could be a latency problem with the GitHub API 'activity' endpoint. ${
             susCommitsMessage
-              ? "Found following suspoicios commits: " + susCommitsMessage
-              : null
+              ? "Of the checked commits, found the following suspicious commits: " +
+                susCommitsMessage
+              : "Of the checked commits, found no suspicious commits"
           }`
         );
       } else {
