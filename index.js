@@ -29,21 +29,28 @@ async function checkSpoofing() {
 
       const commitsInPr = responseCommits.data;
 
-      const responseActivities = await octokit.request(
-        "GET /repos/{owner}/{repo}/activity?ref={ref}&activity_type=push&per_page=100",
-        {
-          owner: owner,
-          repo: repo,
-          ref: context.payload.pull_request.head.ref,
-          headers: {
-            "X-GitHub-Api-Version": "2022-11-28",
-          },
-        }
-      );
+      async function getActivities(activityType) {
+        const responseActivities = await octokit.request(
+          `GET /repos/{owner}/{repo}/activity?ref=${activityType}&activity_type=push&per_page=100`,
+          {
+            owner: owner,
+            repo: repo,
+            ref: context.payload.pull_request.head.ref,
+            headers: {
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+          }
+        );
 
-      checkNetworkError(responseActivities.status, "activities in branch");
+        checkNetworkError(responseActivities.status, "activities in branch");
 
-      const activitiesInPr = responseActivities.data;
+        return responseActivities.data;
+      }
+
+      const activitiesInPr = [
+        await getActivities("push"),
+        ...(await getActivities("force_push")),
+      ];
       let susCommitsMessage = "";
       let checkedCommitsMessage = "";
       let checkedCommitsCount = 0;
