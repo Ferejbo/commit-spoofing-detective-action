@@ -31,7 +31,7 @@ async function checkSpoofing() {
 
       async function getActivities(activityType) {
         const responseActivities = await octokit.request(
-          `GET /repos/{owner}/{repo}/activity?ref=${activityType}&activity_type=push&per_page=100`,
+          `GET /repos/{owner}/{repo}/activity?ref={ref}&activity_type=${activityType}&per_page=100`,
           {
             owner: owner,
             repo: repo,
@@ -122,7 +122,7 @@ async function checkSpoofing() {
       console.log("Checked the following commits in the pull request:");
       console.log(checkedCommitsMessage);
 
-      if (checkedCommitsCount != commitsInPr.length) {
+      if (checkedCommitsCount < commitsInPr.length) {
         core.setFailed(
           "All commits in branch were not checked for spoofing. This could be a latency problem with the GitHub API 'activity' endpoint or a bug with the GitHub Action."
         );
