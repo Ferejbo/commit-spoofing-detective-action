@@ -31109,29 +31109,41 @@ async function checkSpoofing() {
 
       const commitsInPr = responseCommits.data;
 
-      const responseActivities = await octokit.request(
-        "GET /repos/{owner}/{repo}/activity?ref={ref}&activity_type=push&per_page=100",
-        {
-          owner: owner,
-          repo: repo,
-          ref: context.payload.pull_request.head.ref,
-          headers: {
-            "X-GitHub-Api-Version": "2022-11-28",
-          },
-        }
-      );
+      async function getActivities(activityType) {
+        const responseActivities = await octokit.request(
+          `GET /repos/{owner}/{repo}/activity?ref=${activityType}&activity_type=push&per_page=100`,
+          {
+            owner: owner,
+            repo: repo,
+            ref: context.payload.pull_request.head.ref,
+            headers: {
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+          }
+        );
 
-      checkNetworkError(responseActivities.status, "activities in branch");
+        checkNetworkError(responseActivities.status, "activities in branch");
 
-      const activitiesInPr = responseActivities.data;
+        return responseActivities.data;
+      }
+
+      const activitiesInPr = [
+        await getActivities("push"),
+        ...(await getActivities("force_push")),
+      ];
       let susCommitsMessage = "";
       let checkedCommitsMessage = "";
       let checkedCommitsCount = 0;
 
+      let onlyAuthorMismatchMessage = "";
+      let onlyCommitterMismatchMessage = "";
+
       for (commit of commitsInPr) {
         const commitSha = commit.sha;
-        const commitAuthorLogin = commit.author.login;
         const commitMessage = commit.commit.message;
+
+        const commitAuthorLogin = commit.author.login;
+        const committerLogin = commit.committer.login;
 
         for (activity of activitiesInPr) {
           const activityCommitSha = activity.after;
@@ -31143,15 +31155,44 @@ async function checkSpoofing() {
               "\n";
             checkedCommitsCount++;
 
-            if (commitAuthorLogin != activityActor) {
+            const commitAuthorLoginMismatch =
+              commitAuthorLogin != activityActor;
+            const committerLoginMismatch = committerLogin != activityActor;
+
+            if (commitAuthorLoginMismatch && committerLoginMismatch) {
               core.setOutput("mismatch", "true");
               susCommitsMessage +=
+                "Suspicious commit detected: " +
                 returnSuspiciousCommitStringFormatted(
                   commitMessage,
                   commitSha,
                   commitAuthorLogin,
+                  committerLogin,
                   activityActor
-                ) + "\n";
+                ) +
+                "\n";
+            } else if (commitAuthorLoginMismatch) {
+              onlyAuthorMismatchMessage +=
+                "Only commit author differs from pusher: " +
+                getCommitInfoStringFormatted(
+                  commitMessage,
+                  sha,
+                  commitAuthor,
+                  committer,
+                  pusher
+                ) +
+                "\n";
+            } else if (committerLoginMismatch) {
+              onlyCommitterMismatchMessage +=
+                "Only committer differs from pusher: " +
+                getCommitInfoStringFormatted(
+                  commitMessage,
+                  sha,
+                  commitAuthor,
+                  committer,
+                  pusher
+                ) +
+                "\n";
             }
           }
         }
@@ -31162,11 +31203,7 @@ async function checkSpoofing() {
 
       if (checkedCommitsCount != commitsInPr.length) {
         core.setFailed(
-          `All commits in branch were not checked for spoofing. This could be a latency problem with the GitHub API 'activity' endpoint. ${
-            susCommitsMessage
-              ? "Found following suspoicios commits: " + susCommitsMessage
-              : null
-          }`
+          "All commits in branch were not checked for spoofing. This could be a latency problem with the GitHub API 'activity' endpoint or a bug with the GitHub Action."
         );
       } else {
         console.log("All commits were succesfully checked for spoofing");
@@ -31180,6 +31217,13 @@ async function checkSpoofing() {
         console.log(
           "No potentially spoofed commits spotted in the pull request"
         );
+        if (onlyAuthorMismatchMessage || onlyCommitterMismatchMessage) {
+          console.log(
+            "Some partial mismatch were found. These are most likely benign but worth checking:\n" +
+              onlyAuthorMismatchMessage +
+              onlyCommitterMismatchMessage
+          );
+        }
         core.setOutput("mismatch", "false");
       }
     } catch (error) {
@@ -31190,30 +31234,60 @@ async function checkSpoofing() {
       const pushedCommit = context.payload.head_commit;
 
       const commitAuthor = pushedCommit.author.username;
+      const committer = pushedCommit.committer.username;
+
       const commitMessage = pushedCommit.message;
 
       const pusher = context.actor;
 
-      const commitTextOutput = returnCheckedCommitStringFormatted(
-        commitMessage,
-        sha
-      );
+      commitAuthorMismatch = commitAuthor !== pusher;
+      committerMismatch = committer !== pusher;
 
-      if (commitAuthor !== pusher) {
+      if (commitAuthorMismatch && committerMismatch) {
         const detailedMismatchMessage = returnSuspiciousCommitStringFormatted(
           commitMessage,
           sha,
           commitAuthor,
+          committer,
           pusher
         );
         core.setFailed(detailedMismatchMessage);
         core.setOutput("mismatch", "true");
+      } else if (commitAuthorMismatch) {
+        console.log(
+          "Only commit author differs from pusher: " +
+            getCommitInfoStringFormatted(
+              commitMessage,
+              sha,
+              commitAuthor,
+              committer,
+              pusher
+            )
+        );
+      } else if (committerMismatch) {
+        console.log(
+          "Only committer differs from pusher: " +
+            getCommitInfoStringFormatted(
+              commitMessage,
+              sha,
+              commitAuthor,
+              committer,
+              pusher
+            )
+        );
       } else {
         console.log(
-          `No mismatch detected in ${commitTextOutput}. Commit authored by '${commitAuthor}' was also pushed by '${pusher}'.`
+          "No mismatch detected: " +
+            getCommitInfoStringFormatted(
+              commitMessage,
+              sha,
+              commitAuthor,
+              committer,
+              pusher
+            )
         );
-        core.setOutput("mismatch", "false");
       }
+      core.setOutput("mismatch", "false");
     } catch (error) {
       core.setFailed(`Action failed with error: ${error}`);
     }
@@ -31224,11 +31298,11 @@ function returnCheckedCommitStringFormatted(message, sha) {
   return `commit "${message}" (${sha})`;
 }
 
-function returnSuspiciousCommitStringFormatted(message, sha, author, actor) {
-  return `Suspicious ${returnCheckedCommitStringFormatted(
+function getCommitInfoStringFormatted(message, sha, author, committer, actor) {
+  return `${returnCheckedCommitStringFormatted(
     message,
     sha
-  )}. Author is ${author}, while push actor is ${actor}`;
+  )}. Author is ${author} and commiter is ${committer}, while push actor is ${actor}`;
 }
 
 function checkNetworkError(statusCode, whatAreFetched) {
