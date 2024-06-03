@@ -31164,7 +31164,7 @@ async function checkSpoofing() {
               core.setOutput("mismatch", "true");
               susCommitsMessage +=
                 "Suspicious commit detected: " +
-                returnSuspiciousCommitStringFormatted(
+                getCommitInfoStringFormatted(
                   commitMessage,
                   commitSha,
                   commitAuthorLogin,
@@ -31245,13 +31245,15 @@ async function checkSpoofing() {
       committerMismatch = committer !== pusher;
 
       if (commitAuthorMismatch && committerMismatch) {
-        const detailedMismatchMessage = returnSuspiciousCommitStringFormatted(
-          commitMessage,
-          sha,
-          commitAuthor,
-          committer,
-          pusher
-        );
+        const detailedMismatchMessage =
+          "Suspicious commit detected: " +
+          getCommitInfoStringFormatted(
+            commitMessage,
+            sha,
+            commitAuthor,
+            committer,
+            pusher
+          );
         core.setFailed(detailedMismatchMessage);
         core.setOutput("mismatch", "true");
       } else if (commitAuthorMismatch) {
