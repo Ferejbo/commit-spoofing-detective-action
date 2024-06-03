@@ -47,10 +47,10 @@ async function checkSpoofing() {
         return responseActivities.data;
       }
 
-      const activitiesInPr = [
-        await getActivities("push"),
-        ...(await getActivities("force_push")),
-      ];
+      const activitiesInPr = (await getActivities("push")).concat(
+        await getActivities("force_push")
+      );
+
       let susCommitsMessage = "";
       let checkedCommitsMessage = "";
       let checkedCommitsCount = 0;
