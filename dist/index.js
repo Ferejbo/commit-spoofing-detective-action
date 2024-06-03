@@ -31144,6 +31144,7 @@ async function checkSpoofing() {
 
         const commitAuthorLogin = commit.author.login;
         const committerLogin = commit.committer.login;
+        console.log(commit);
 
         for (activity of activitiesInPr) {
           const activityCommitSha = activity.after;
